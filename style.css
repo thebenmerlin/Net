@@ -1,149 +1,23 @@
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body,#app{width:100%;height:100%;background:#000;overflow:hidden;font-family:Inter,system-ui,-apple-system,Arial}
+#camera{position:fixed;inset:0;width:100%;height:100%;object-fit:cover;z-index:0;filter:contrast(1.05) saturate(1.05) brightness(0.95)}
+#three-canvas{position:fixed;inset:0;z-index:1;pointer-events:none;display:block}
 
-body {
-    width: 100vw;
-    height: 100vh;
-    overflow: hidden;
-    font-family: system-ui, -apple-system, sans-serif;
-    background: #000;
-    position: relative;
-}
+/* UI */
+.ui{position:fixed;left:16px;top:16px;z-index:5;color:#e6f0ff;pointer-events:auto}
+.title{font-size:18px;font-weight:600;margin-bottom:8px;text-shadow:0 6px 20px rgba(0,0,0,0.7)}
+.controls{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+.controls select, .controls button{background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.06);color:#e6f0ff;padding:6px 10px;border-radius:8px;backdrop-filter:blur(6px);cursor:pointer}
+.hint{font-size:12px;opacity:0.9;color:#cfe4ff}
 
-/* Camera feed */
-#camera {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    z-index: 1;
-}
+/* bottom-right pulse button (for touch) */
+#pulseBtn{position:fixed;right:18px;bottom:18px;z-index:6;pointer-events:auto}
 
-/* Wave canvas overlay */
-#waves {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    z-index: 2;
-    pointer-events: none;
-}
+/* snapshot */
+#screenshot{position:fixed;right:18px;bottom:72px;z-index:6;pointer-events:auto}
 
-/* UI overlay */
-.ui-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    z-index: 3;
-    pointer-events: none;
-}
-
-.app-title {
-    position: absolute;
-    top: 20px;
-    left: 20px;
-    color: #ddd;
-    font-size: 18px;
-    font-weight: 300;
-    letter-spacing: 1px;
-    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.7);
-    opacity: 0.9;
-}
-
-.mode-toggle {
-    position: absolute;
-    bottom: 30px;
-    right: 30px;
-    width: 50px;
-    height: 50px;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    color: #ddd;
-    cursor: pointer;
-    pointer-events: auto;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.3s ease;
-}
-
-.mode-toggle:hover {
-    background: rgba(255, 255, 255, 0.2);
-    transform: scale(1.05);
-}
-
-.mode-toggle:active {
-    transform: scale(0.95);
-}
-
-/* Error message */
-.error-message {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    z-index: 4;
-    background: rgba(0, 0, 0, 0.8);
-    backdrop-filter: blur(10px);
-    padding: 20px 40px;
-    border-radius: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    color: #ddd;
-    font-size: 16px;
-    text-align: center;
-}
-
-.error-message.hidden {
-    display: none;
-}
-
-/* Dark mode (default) */
-body.dark-mode {
-    --wave-color-1: rgba(0, 255, 255, 0.3);
-    --wave-color-2: rgba(138, 43, 226, 0.3);
-    --wave-color-3: rgba(255, 255, 255, 0.2);
-}
-
-/* Light mode */
-body.light-mode {
-    --wave-color-1: rgba(255, 100, 100, 0.4);
-    --wave-color-2: rgba(255, 200, 50, 0.4);
-    --wave-color-3: rgba(100, 150, 255, 0.3);
-}
-
-body.light-mode .app-title {
-    color: #fff;
-    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.9);
-}
-
-body.light-mode .mode-toggle {
-    background: rgba(0, 0, 0, 0.2);
-    border-color: rgba(0, 0, 0, 0.3);
-    color: #fff;
-}
-
-/* Mobile optimization */
-@media (max-width: 768px) {
-    .app-title {
-        font-size: 14px;
-        top: 15px;
-        left: 15px;
-    }
-
-    .mode-toggle {
-        width: 45px;
-        height: 45px;
-        bottom: 20px;
-        right: 20px;
-    }
+/* responsive */
+@media (max-width:700px){
+  .title{font-size:16px}
+  .controls{flex-wrap:wrap}
 }
