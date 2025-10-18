@@ -1,4 +1,4 @@
-// See the Invisible Web — Advanced (Camera Fix Build)
+// See the Invisible Web — Advanced (FIXED BUILD)
 // Three.js + GPU particle field + video texture
 import * as THREE from 'three';
 
@@ -29,7 +29,7 @@ async function init() {
     antialias: true,
     preserveDrawingBuffer: true,
   });
-  renderer.setPixelRatio(window.devicePixelRatio || 1);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   renderer.setSize(window.innerWidth, window.innerHeight, false);
   renderer.autoClear = false;
 
@@ -42,34 +42,60 @@ async function init() {
   );
   camera.position.z = 1.5;
 
-  // ✅ Fixed camera initialization
+  // ✅ CAMERA FIX: Enhanced iOS Safari compatibility
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: { ideal: "environment" } }, // rear if possible
-      audio: false,
-    });
+    // Set video attributes BEFORE getUserMedia for iOS
+    video.setAttribute('autoplay', '');
+    video.setAttribute('playsinline', '');
+    video.setAttribute('muted', '');
+    video.setAttribute('webkit-playsinline', '');
+    video.autoplay = true;
+    video.playsInline = true;
+    video.muted = true;
+
+    const constraints = {
+      video: {
+        facingMode: { ideal: "environment" }, // rear if possible
+        width: { ideal: 1920 },
+        height: { ideal: 1080 }
+      },
+      audio: false
+    };
+
+    const stream = await navigator.mediaDevices.getUserMedia(constraints);
     video.srcObject = stream;
 
-    // Required for iOS Safari
-    video.setAttribute('playsinline', true);
-    video.setAttribute('muted', true);
-    video.muted = true;
-    video.playsInline = true;
+    // ✅ Wait for video to be ready before creating texture
+    await new Promise((resolve, reject) => {
+      video.onloadedmetadata = () => {
+        video.play()
+          .then(resolve)
+          .catch(reject);
+      };
+      video.onerror = reject;
 
-    // ensure video plays
-    await video.play().catch(() => {});
+      // Timeout after 10 seconds
+      setTimeout(() => reject(new Error('Video timeout')), 10000);
+    });
+
+    console.log('✅ Camera initialized successfully');
 
     // Create texture from live feed
     videoTexture = new THREE.VideoTexture(video);
     videoTexture.minFilter = THREE.LinearFilter;
     videoTexture.magFilter = THREE.LinearFilter;
     videoTexture.format = THREE.RGBFormat;
+    videoTexture.colorSpace = THREE.SRGBColorSpace;
+
     setupBackground(videoTexture);
   } catch (err) {
     console.warn("Camera failed:", err);
+    alert('Camera access denied or failed. Using fallback background.');
     setupFallbackBackground();
   }
 
+  // Wait for SimplexNoise to be available
+  await waitForSimplex();
   simplex = new SimplexNoise();
 
   createParticles();
@@ -86,49 +112,72 @@ async function init() {
       pointer.x = (e.touches[0].clientX / window.innerWidth) * 2 - 1;
       pointer.y = -(e.touches[0].clientY / window.innerHeight) * 2 + 1;
     }
-  });
+  }, { passive: true });
 
   // Device tilt support (with iOS permission)
   if (
     window.DeviceOrientationEvent &&
     typeof DeviceOrientationEvent.requestPermission === 'function'
   ) {
-    window.addEventListener(
+    // iOS 13+ requires permission
+    document.getElementById('pulseBtn').addEventListener(
       'click',
       async () => {
         try {
           const perm = await DeviceOrientationEvent.requestPermission();
           if (perm === 'granted') {
-            window.addEventListener('deviceorientation', (ev) => {
-              deviceTilt.x = (ev.beta || 0) / 90;
-              deviceTilt.y = (ev.gamma || 0) / 90;
-            });
+            window.addEventListener('deviceorientation', handleOrientation);
+            console.log('✅ Device orientation permission granted');
           }
-        } catch {}
+        } catch (e) {
+          console.log('Device orientation not available:', e);
+        }
       },
       { once: true }
     );
   } else if (window.DeviceOrientationEvent) {
-    window.addEventListener('deviceorientation', (ev) => {
-      deviceTilt.x = (ev.beta || 0) / 90;
-      deviceTilt.y = (ev.gamma || 0) / 90;
-    });
+    window.addEventListener('deviceorientation', handleOrientation);
   }
 
   // Buttons
   document.getElementById('pulseBtn').addEventListener('click', emitPulse);
   document.getElementById('screenshot').addEventListener('click', takeSnapshot);
-  document
-    .getElementById('quality')
-    .addEventListener('change', onQualityChange);
+  document.getElementById('quality').addEventListener('change', onQualityChange);
 
   animate();
 }
 
+// Helper function to wait for SimplexNoise to load
+function waitForSimplex() {
+  return new Promise((resolve) => {
+    if (window.SimplexNoise) {
+      resolve();
+    } else {
+      const checkInterval = setInterval(() => {
+        if (window.SimplexNoise) {
+          clearInterval(checkInterval);
+          resolve();
+        }
+      }, 100);
+    }
+  });
+}
+
+// Handle device orientation
+function handleOrientation(ev) {
+  deviceTilt.x = (ev.beta || 0) / 90;
+  deviceTilt.y = (ev.gamma || 0) / 90;
+}
+
 // Background (video plane)
 function setupBackground(tex) {
-  const geom = new THREE.PlaneGeometry(2, 2);
-  const mat = new THREE.MeshBasicMaterial({ map: tex, opacity: 0.98 });
+  const aspectRatio = window.innerWidth / window.innerHeight;
+  const geom = new THREE.PlaneGeometry(2 * aspectRatio, 2);
+  const mat = new THREE.MeshBasicMaterial({ 
+    map: tex, 
+    opacity: 0.98,
+    transparent: true
+  });
   const mesh = new THREE.Mesh(geom, mat);
   mesh.renderOrder = -1;
   scene.add(mesh);
@@ -138,6 +187,7 @@ function setupBackground(tex) {
 function setupFallbackBackground() {
   const color = new THREE.Color(0x02030a);
   scene.background = color;
+  video.style.display = 'none';
 }
 
 // Particles
@@ -145,6 +195,7 @@ function createParticles() {
   const count = CONFIG.particles;
   const positions = new Float32Array(count * 3);
   const seeds = new Float32Array(count);
+
   for (let i = 0; i < count; i++) {
     const idx = i * 3;
     positions[idx] = (Math.random() * 2 - 1) * CONFIG.area;
@@ -174,9 +225,11 @@ function createParticles() {
       uniform vec2 uTilt;
       uniform float uSize;
       varying float vAlpha;
+
       float snoise(vec2 v){
         return (sin(v.x*12.9898+v.y*78.233)*43758.5453)-floor(sin(v.x*12.9898+v.y*78.233)*43758.5453);
       }
+
       void main(){
         vec3 pos = position;
         float n = snoise(vec2(pos.x*0.5+uTime*0.1+aSeed, pos.y*0.5+uTime*0.12));
@@ -190,6 +243,7 @@ function createParticles() {
     `,
     fragmentShader: `
       varying float vAlpha;
+
       void main(){
         float d = length(gl_PointCoord - vec2(0.5));
         float alpha = smoothstep(0.5, 0.0, d) * vAlpha;
@@ -207,6 +261,7 @@ function createLines() {
   const count = CONFIG.lines;
   const positions = new Float32Array(count * 6);
   let idx = 0;
+
   for (let i = 0; i < count; i++) {
     const x1 = (Math.random() * 2 - 1) * CONFIG.area;
     const y1 = (Math.random() * 2 - 1) * CONFIG.area * 0.6;
@@ -216,18 +271,21 @@ function createLines() {
     const x2 = x1 + Math.cos(angle) * len;
     const y2 = y1 + Math.sin(angle) * len * 0.6;
     const z2 = z1 + (Math.random() * 0.02 - 0.01);
+
     positions.set([x1, y1, z1, x2, y2, z2], idx);
     idx += 6;
   }
 
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
   const material = new THREE.LineBasicMaterial({
     color: 0x6ee7ff,
     transparent: true,
     opacity: 0.08,
     blending: THREE.AdditiveBlending,
   });
+
   lineMesh = new THREE.LineSegments(geometry, material);
   scene.add(lineMesh);
 }
@@ -238,6 +296,7 @@ function emitPulse() {
   const orig = mat.uniforms.uSize.value;
   let t0 = performance.now();
   const dur = 800;
+
   function step() {
     const now = performance.now();
     const p = Math.min(1, (now - t0) / dur);
@@ -255,6 +314,7 @@ function takeSnapshot() {
   temp.width = canvas.width;
   temp.height = canvas.height;
   const ctx = temp.getContext('2d');
+
   try {
     if (video && video.readyState >= 2) {
       ctx.drawImage(video, 0, 0, temp.width, temp.height);
@@ -263,6 +323,7 @@ function takeSnapshot() {
       ctx.fillRect(0, 0, temp.width, temp.height);
     }
     ctx.drawImage(canvas, 0, 0);
+
     const data = temp.toDataURL('image/png');
     const a = document.createElement('a');
     a.href = data;
@@ -276,6 +337,7 @@ function takeSnapshot() {
 // Quality switch
 function onQualityChange(e) {
   const q = e.target.value;
+
   if (q === 'low') {
     CONFIG.particles = 1500;
     CONFIG.lines = 600;
@@ -289,6 +351,7 @@ function onQualityChange(e) {
     CONFIG.lines = 1600;
     CONFIG.particleSize = 3.2;
   }
+
   if (particleSystem) {
     scene.remove(particleSystem);
     particleSystem.geometry.dispose();
@@ -299,6 +362,7 @@ function onQualityChange(e) {
     lineMesh.geometry.dispose();
     lineMesh.material.dispose();
   }
+
   createParticles();
   createLines();
 }
@@ -314,7 +378,7 @@ function animate() {
     particleSystem.material.uniforms.uTilt.value.set(deviceTilt.x * 0.9, deviceTilt.y * 0.9);
   }
 
-  if (lineMesh) {
+  if (lineMesh && simplex) {
     const pos = lineMesh.geometry.attributes.position.array;
     for (let i = 0; i < pos.length; i += 3) {
       const x = pos[i], y = pos[i + 1];
@@ -340,4 +404,5 @@ function onWindowResize() {
   camera.updateProjectionMatrix();
 }
 
+// Start
 init();
