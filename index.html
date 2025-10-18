@@ -1,37 +1,66 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <title>See the Invisible Web — Advanced</title>
-  <link rel="stylesheet" href="style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>See the Invisible Web — Advanced</title>
+    <link rel="stylesheet" href="style.css">
 </head>
-<body class="dark-mode">
-  <div id="app">
-    <video id="camera" autoplay playsinline muted></video>
+<body>
+    <!-- Camera video feed -->
+    <video id="camera" autoplay playsinline muted webkit-playsinline></video>
+
+    <!-- Three.js canvas -->
     <canvas id="three-canvas"></canvas>
 
+    <!-- UI overlay -->
     <div class="ui">
-      <div class="title">See the Invisible Web</div>
-      <div class="controls">
-        <label>Quality
-          <select id="quality">
-            <option value="high">High</option>
-            <option value="medium" selected>Medium</option>
-            <option value="low">Low</option>
-          </select>
-        </label>
-        <button id="pulseBtn">Emit Pulse</button>
-        <button id="screenshot">Snapshot</button>
-      </div>
-      <div class="hint">Camera-based AR visualization — simulated signals only.</div>
+        <h1 class="title">See the Invisible Web</h1>
+        <div class="controls">
+            <label for="quality">Quality</label>
+            <select id="quality">
+                <option value="high">High</option>
+                <option value="medium" selected>Medium</option>
+                <option value="low">Low</option>
+            </select>
+        </div>
+        <p class="hint">Camera-based AR visualization — simulated signals only.</p>
     </div>
-  </div>
 
-  <!-- Three.js from CDN -->
-  <script src="https://unpkg.com/three@0.154.0/build/three.min.js"></script>
-  <!-- Simplex noise lib (small) -->
-  <script src="https://unpkg.com/simplex-noise@3.0.0/dist/simplex-noise.js"></script>
-  <script type="module" src="app.js"></script>
+    <!-- Pulse button -->
+    <button id="pulseBtn" aria-label="Emit pulse">💫</button>
+
+    <!-- Screenshot button -->
+    <button id="screenshot" aria-label="Take snapshot">📸</button>
+
+    <!-- Import maps for Three.js -->
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+
+    <!-- SimplexNoise from CDN -->
+    <script type="module">
+        import { createNoise2D } from 'https://cdn.jsdelivr.net/npm/simplex-noise@4.0.3/+esm';
+
+        // Create a SimplexNoise-compatible wrapper
+        class SimplexNoise {
+            constructor() {
+                this.noise2D = createNoise2D();
+            }
+        }
+
+        // Make it available globally for app.js
+        window.SimplexNoise = SimplexNoise;
+    </script>
+
+    <!-- Main app -->
+    <script type="module" src="app.js"></script>
 </body>
 </html>
